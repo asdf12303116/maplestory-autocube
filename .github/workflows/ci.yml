@@ -1,0 +1,128 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # 当推送标签时触发，例如 v0713-2
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11.9'
+    
+    - name: Create virtual environment
+      run: |
+        python -m venv venv
+        venv\Scripts\activate
+        python -m pip install --upgrade pip
+    
+    - name: Install dependencies
+      run: |
+        venv\Scripts\activate
+        pip install -r .\requirements.txt
+    
+    - name: Build with PyInstaller
+      run: |
+        venv\Scripts\activate
+        pyinstaller auto_cuber_main.spec
+    
+    - name: Copy additional files
+      run: |
+        # 复制template文件夹到dist目录
+        xcopy /E /I template dist\auto_cuber_main\template
+        
+        # 复制其他文件到dist目录
+        copy config.json dist\auto_cuber_main\
+        copy "使用说明.pdf" dist\auto_cuber_main\
+        copy "更新内容.txt" dist\auto_cuber_main\
+    
+    - name: Create ZIP package
+      run: |
+        cd dist
+        powershell Compress-Archive -Path auto_cuber_main -DestinationPath auto_cuber_main.zip
+    
+    - name: Get tag name
+      id: get_tag
+      run: |
+        if ("${{ github.ref }}" -match "refs/tags/(.+)") {
+          echo "TAG_NAME=$($matches[1])" >> $env:GITHUB_OUTPUT
+        } else {
+          echo "TAG_NAME=manual-build-$(Get-Date -Format 'MMdd-HHmm')" >> $env:GITHUB_OUTPUT
+        }
+    
+    - name: Extract current version changelog
+      id: changelog
+      run: |
+        if (Test-Path "更新内容.txt") {
+          $content = Get-Content "更新内容.txt" -Raw -Encoding UTF8
+          
+          # 获取当前标签版本（去掉v前缀）
+          $currentTag = "${{ github.ref }}" -replace "refs/tags/v", ""
+          if (-not $currentTag) {
+            $currentTag = "manual-build"
+          }
+          
+          # 查找当前版本的更新内容
+          $lines = $content -split "`r?`n"
+          $currentVersionContent = @()
+          $foundCurrentVersion = $false
+          $nextVersionFound = $false
+          
+          foreach ($line in $lines) {
+            # 检查是否是版本行（格式：v0713-2:）
+            if ($line -match "^v?([^:]+):$") {
+              $version = $matches[1]
+              if ($version -eq $currentTag) {
+                $foundCurrentVersion = $true
+                $currentVersionContent += "## $line"
+                continue
+              } elseif ($foundCurrentVersion) {
+                # 找到下一个版本，停止提取
+                $nextVersionFound = $true
+                break
+              }
+            }
+            
+            # 如果找到了当前版本，添加内容行
+            if ($foundCurrentVersion -and -not $nextVersionFound) {
+              $currentVersionContent += $line
+            }
+          }
+          
+          # 如果没有找到当前版本，使用完整内容
+          if (-not $foundCurrentVersion) {
+            $changelogText = $content -replace "`r`n", "`n"
+            $changelogText = "## 完整更新日志`n`n" + $changelogText
+          } else {
+            $changelogText = ($currentVersionContent -join "`n").Trim()
+          }
+          
+          # 输出到 GitHub Output
+          echo "CHANGELOG<<EOF" >> $env:GITHUB_OUTPUT
+          echo "$changelogText" >> $env:GITHUB_OUTPUT
+          echo "EOF" >> $env:GITHUB_OUTPUT
+        } else {
+          echo "CHANGELOG=暂无更新内容" >> $env:GITHUB_OUTPUT
+        }
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.get_tag.outputs.TAG_NAME }}
+        name: Release ${{ steps.get_tag.outputs.TAG_NAME }}
+        body: ${{ steps.changelog.outputs.CHANGELOG }}
+        files: |
+          dist/auto_cuber_main.zip
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
