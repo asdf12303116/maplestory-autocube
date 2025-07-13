@@ -1,0 +1,73 @@
+{
+  "window_class": "MapleStoryClassSG",
+  "potential_area_template_path_prefix": "template/additional_",
+  "cube_button_template_path_prefix": "template/additional_use_",
+  "cube_button_fail_template_path_prefix": "template/additional_use_fail_",
+  "main_area_template_path_prefix": "template/main_",
+  "main_button_template_path_prefix": "template/main_use_",
+  "main_button_fail_template_path_prefix": "template/main_use_fail_",
+  "file_end": ".png",
+  "res_config": [
+    "1366",
+    "1920",
+    "2560"
+  ],
+  "template_match_threshold": 0.65,
+  "client_area_border_offsets": {
+    "left": 8,
+    "top": 31,
+    "right": 8,
+    "bottom": 8
+  },
+  "delays": {
+    "after_click": 0.05,
+    "after_enter": 0.1,
+    "between_attempts": 0.2
+  },
+  "ocr_settings": {
+    "score_cutoff": 65
+  },
+  "all_use": [
+    [
+      "力量",
+      "所有属性"
+    ],
+    [
+      "敏捷",
+      "所有属性"
+    ],
+    [
+      "智力",
+      "所有属性"
+    ],
+    [
+      "运气",
+      "所有属性"
+    ],
+    [
+      "所有属性",
+      "所有属性"
+    ]
+  ],
+  "valid_potentials": [
+    "力量",
+    "敏捷",
+    "智力",
+    "运气",
+    "攻击力",
+    "魔法攻击力",
+    "魔力",
+    "所有属性",
+    "最大HP",
+    "最大MP",
+    "BOSS怪攻击时伤害",
+    "无视怪物防御率",
+    "暴击伤害",
+    "获得金币",
+    "道具掉落率",
+    "角色每10级力量",
+    "角色每10级敏捷",
+    "角色每10级智力",
+    "角色每10级运气"
+  ]
+}
