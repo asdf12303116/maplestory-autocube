@@ -80,7 +80,7 @@ def main_worker(main, desired_stats,show_image_var,keep_all_useable=False):
                     main.log("警告: 无法捕捉窗口画面。")
                     time.sleep(1)
                     continue
-
+            main.log(f"当前获取图像分辨率{client_origin[2] - client_origin[0]}x{client_origin[3] - client_origin[1]}")
             potential_loc, potential_size, potential_threshold = potential_matcher.find_match(client_area_capture)
             button_loc, button_size, button_threshold = button_matcher.find_match(client_area_capture)
             button_fail_loc, button_fail_size, button_fail_threshold = button_fail_matcher.find_match(

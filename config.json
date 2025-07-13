@@ -14,10 +14,10 @@
   ],
   "template_match_threshold": 0.65,
   "client_area_border_offsets": {
-    "left": 8,
-    "top": 31,
-    "right": 8,
-    "bottom": 8
+    "left": 12,
+    "top": 52,
+    "right": 12,
+    "bottom": 12
   },
   "delays": {
     "after_click": 0.05,

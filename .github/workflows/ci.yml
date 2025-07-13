@@ -63,11 +63,7 @@ jobs:
         copy config.json dist\auto_cuber_main\
         copy "使用说明.pdf" dist\auto_cuber_main\
         copy "更新内容.txt" dist\auto_cuber_main\
-    
-    - name: Create ZIP package
-      run: |
-        cd dist
-        powershell Compress-Archive -Path auto_cuber_main -DestinationPath auto_cuber_main.zip
+
     
     - name: Get tag name
       id: get_tag
@@ -132,7 +128,14 @@ jobs:
         } else {
           echo "CHANGELOG=暂无更新内容" >> $env:GITHUB_OUTPUT
         }
-    
+
+    - name: Create ZIP package
+      run: |
+        cd dist
+        $zipFileName = "auto_cuber_main_${{ steps.get_tag.outputs.TAG_NAME }}.zip"
+        powershell Compress-Archive -Path auto_cuber_main -DestinationPath $zipFileName
+
+
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
