@@ -143,6 +143,6 @@ jobs:
         name: Release ${{ steps.get_tag.outputs.TAG_NAME }}
         body: ${{ steps.changelog.outputs.CHANGELOG }}
         files: |
-          dist/auto_cuber_main.zip
+          dist/auto_cuber_main_${{ steps.get_tag.outputs.TAG_NAME }}.zip
         draft: false
         prerelease: false
