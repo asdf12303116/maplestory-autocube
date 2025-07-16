@@ -65,8 +65,9 @@ class AutoCuberGUI(tk.Tk):
             self.after(0, self.key_exit)
 
     def key_exit(self):
-        print("key exit")
-        self.stop_cubing()
+        if not self.stop_event.is_set():
+            print("key exit")
+            self.stop_cubing()
 
     # 在 AutoCuberGUI 类中添加新的辅助方法
     def _toggle_third_line(self):
@@ -80,6 +81,9 @@ class AutoCuberGUI(tk.Tk):
 
     def _toggle_all_line(self):
         """处理仅匹配前两行选项的切换"""
+        cube_type = self.cube_type.get()
+        if cube_type == 1:
+            return
         if self.keep_all_useable.get():
             for i in range(3):
                 self.desired_stats_vars[i].set('')
@@ -346,6 +350,8 @@ class AutoCuberGUI(tk.Tk):
         self.after(100, self.process_queues)
 
     def start_cubing(self):
+        mouse_move_to_arg = (500,30)
+        self.mouse_move_arg = mouse_move_to_arg
         desired_stats = [var.get().strip() for var in self.desired_stats_vars if var.get().strip()]
         keep_all_useable = self.keep_all_useable.get() == 1
         if not desired_stats and not keep_all_useable:

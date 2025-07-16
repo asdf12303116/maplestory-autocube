@@ -18,17 +18,18 @@ class Capture:
         hwnd = self.window_manager.hwnd
         try:
             window_rect = win32gui.GetWindowRect(hwnd)
-            client_left = window_rect[0] + self.border_offsets['left']
-            client_top = window_rect[1] + self.border_offsets['top']
-            client_right = window_rect[2] - self.border_offsets['right']
-            client_bottom = window_rect[3] - self.border_offsets['bottom']
-
-            bbox = (client_left, client_top, client_right, client_bottom)
-            pil_image = ImageGrab.grab(bbox=bbox)
+            # client_left = window_rect[0] + self.border_offsets['left']
+            # client_top = window_rect[1] + self.border_offsets['top']
+            # client_right = window_rect[2] - self.border_offsets['right']
+            # client_bottom = window_rect[3] - self.border_offsets['bottom']
+            #
+            #
+            # bbox = (client_left, client_top, client_right, client_bottom)
+            pil_image = ImageGrab.grab(bbox=window_rect)
             frame_rgb = np.array(pil_image)
             frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
 
-            return frame_bgr, bbox
+            return frame_bgr, window_rect
 
         except Exception as e:
             print(f"截图失败: {e}")

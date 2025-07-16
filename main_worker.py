@@ -42,6 +42,7 @@ def main_worker(main, desired_stats,show_image_var,keep_all_useable=False):
         delay_after_enter = cfg.get("delays").get("after_enter")
 
         input_controller = InputController(delay_after_click, delay_after_enter)
+        mouse_move_arg = main.mouse_move_arg
 
         all_useable_stat = cfg.get("all_use")
         if keep_all_useable:
@@ -73,14 +74,14 @@ def main_worker(main, desired_stats,show_image_var,keep_all_useable=False):
 
             if last_level_not_top:
                 last_level_not_top = False
-                input_controller.click(client_origin[0] + 100, client_origin[1] + 5)
+                input_controller.click(client_origin[0] + mouse_move_arg[0], client_origin[1] + mouse_move_arg[1])
                 time.sleep(0.1)
                 client_area_capture, client_origin = capture.capture_window_client_area()
                 if client_area_capture is None:
                     main.log("警告: 无法捕捉窗口画面。")
                     time.sleep(1)
                     continue
-            main.log(f"当前获取图像分辨率{client_origin[2] - client_origin[0]}x{client_origin[3] - client_origin[1]}")
+            # main.log(f"当前获取图像分辨率{client_origin[2] - client_origin[0]}x{client_origin[3] - client_origin[1]}")
             potential_loc, potential_size, potential_threshold = potential_matcher.find_match(client_area_capture)
             button_loc, button_size, button_threshold = button_matcher.find_match(client_area_capture)
             button_fail_loc, button_fail_size, button_fail_threshold = button_fail_matcher.find_match(
@@ -159,7 +160,7 @@ def main_worker(main, desired_stats,show_image_var,keep_all_useable=False):
             # 未找到 使用魔方
             if not main.stop_event.is_set():
                 input_controller.press_button_confirm(center_x_abs, center_y_abs)
-                input_controller.click(client_origin[0] + 100, client_origin[1] + 5)
+                input_controller.click(client_origin[0] + mouse_move_arg[0], client_origin[1] + mouse_move_arg[1])
             continue
 
 
