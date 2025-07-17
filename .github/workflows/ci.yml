@@ -19,6 +19,15 @@ jobs:
       with:
         python-version: '3.11.9'
         cache: 'pip'
+
+    - name: Get tag name
+      id: get_tag
+      run: |
+        if ("${{ github.ref }}" -match "refs/tags/(.+)") {
+          echo "TAG_NAME=$($matches[1])" >> $env:GITHUB_OUTPUT
+        } else {
+          echo "TAG_NAME=manual-build-$(Get-Date -Format 'MMdd-HHmm')" >> $env:GITHUB_OUTPUT
+        }    
     
     # 缓存虚拟环境
     - name: Cache virtual environment
@@ -49,6 +58,13 @@ jobs:
           *.spec
         key: ${{ runner.os }}-pyinstaller-${{ hashFiles('**/*.py') }}
     
+    # 新增:更新版本号步骤
+    - name: Update version number
+      run: |
+        $content = Get-Content -Path gui.py -Raw
+        $newContent = $content -replace 'package_version="{version}"', 'package_version="${{ steps.get_tag.outputs.TAG_NAME }}"'
+        Set-Content -Path gui.py -Value $newContent
+    
     - name: Build with PyInstaller
       run: |
         venv\Scripts\activate
@@ -64,16 +80,6 @@ jobs:
         copy "使用说明.pdf" dist\auto_cuber_main\
         copy "更新内容.txt" dist\auto_cuber_main\
 
-    
-    - name: Get tag name
-      id: get_tag
-      run: |
-        if ("${{ github.ref }}" -match "refs/tags/(.+)") {
-          echo "TAG_NAME=$($matches[1])" >> $env:GITHUB_OUTPUT
-        } else {
-          echo "TAG_NAME=manual-build-$(Get-Date -Format 'MMdd-HHmm')" >> $env:GITHUB_OUTPUT
-        }
-    
     - name: Extract current version changelog
       id: changelog
       run: |
@@ -134,7 +140,6 @@ jobs:
         cd dist
         $zipFileName = "auto_cuber_main_${{ steps.get_tag.outputs.TAG_NAME }}.zip"
         powershell Compress-Archive -Path auto_cuber_main -DestinationPath $zipFileName
-
 
     - name: Create Release
       uses: softprops/action-gh-release@v1

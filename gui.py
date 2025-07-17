@@ -13,6 +13,7 @@ from additional_worker import additional_worker
 from config_manager import ConfigManager
 from main_worker import main_worker
 
+package_version="{version}"
 
 # 告诉操作系统使用程序自身的dpi适配
 
@@ -22,7 +23,10 @@ class AutoCuberGUI(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.title("魔方-0713-v1")
+        if package_version.startswith("{"):
+            self.title("魔方-local")
+        else:
+            self.title(f"魔方-{package_version}")
         self.geometry("740x850")  # 调整初始尺寸
         self.resizable(True, True)
         ctypes.windll.shcore.SetProcessDpiAwareness(1)
@@ -80,17 +84,35 @@ class AutoCuberGUI(tk.Tk):
                 self.stats_combos[2].configure(state='readonly')  # 启用第三行
 
     def _toggle_all_line(self):
-        """处理仅匹配前两行选项的切换"""
+        """
+        处理所有属性行的启用/禁用状态
+        根据魔方类型和'保留所有可用属性'选项来控制属性选择组件的状态
+        """
         cube_type = self.cube_type.get()
-        if cube_type == 1:
-            return
-        if self.keep_all_useable.get():
+        keep_all_useable = self.keep_all_useable.get()
+
+        def disable_all_lines():
+            """禁用所有属性行并清空内容"""
             for i in range(3):
                 self.desired_stats_vars[i].set('')
                 self.stats_combos[i].configure(state='disabled')
-        else:
-            for i in range(3):
+
+        def enable_lines(count=3):
+            """启用指定数量的属性行"""
+            for i in range(count):
                 self.stats_combos[i].configure(state='readonly')
+
+        if keep_all_useable:
+            disable_all_lines()
+        else:
+            if cube_type == 1:  # 平等魔方
+                enable_lines(1)  # 只启用第一行
+                # 禁用其他行
+                for i in range(1, 3):
+                    self.desired_stats_vars[i].set('')
+                    self.stats_combos[i].configure(state='disabled')
+            else:
+                enable_lines()  # 启用所有行
 
     def create_widgets(self):
         # 主框架布局
@@ -141,6 +163,7 @@ class AutoCuberGUI(tk.Tk):
                     for i in range(3):
                         self.desired_stats_vars[i].set('')
                         self.stats_combos[i].configure(state='readonly')
+                    self._toggle_third_line()
                 case '平等':
                     self.cube_type.set(1)
                     self.interval_var.set(value="1000")
@@ -358,8 +381,12 @@ class AutoCuberGUI(tk.Tk):
             self.log("错误: 请至少输入一个期望的潜能属性。")
             return
         is_main_cube = self.cube_type.get() == 1
-        if is_main_cube:
-            desired_stats = desired_stats[0]
+        # if is_main_cube:
+        #     if not keep_all_useable:
+        #         self.log("错误: 请至少输入一个期望的潜能属性。")
+        #         return
+        #     else:
+        #         desired_stats = desired_stats[0]
         self.start_button.config(state=tk.DISABLED)
         self.stop_button.config(state=tk.NORMAL)
         self.log("启动自动化核心...")

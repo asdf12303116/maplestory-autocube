@@ -1,5 +1,5 @@
 import time
-
+from doctest import debug
 
 from input_automation_controller import InputController
 from ocr_text_correction_engine import OCREngine
@@ -44,11 +44,13 @@ def main_worker(main, desired_stats,show_image_var,keep_all_useable=False):
         input_controller = InputController(delay_after_click, delay_after_enter)
         mouse_move_arg = main.mouse_move_arg
 
-        all_useable_stat = cfg.get("all_use")
+        all_main_useable_stat = cfg.get("all_main_use")
+        check_desired_stats = None
         if keep_all_useable:
-            main.log(f"目标属性: {all_useable_stat}")
+            main.log(f"目标属性: {all_main_useable_stat}")
         else:
-            main.log(f"目标属性: {desired_stats}")
+            check_desired_stats = desired_stats[0]
+            main.log(f"目标属性: {check_desired_stats}")
         main.log("--- 初始化完成, 3秒后开始 ---")
         time.sleep(3)
 
@@ -150,12 +152,23 @@ def main_worker(main, desired_stats,show_image_var,keep_all_useable=False):
                 time.sleep(0.1)
                 input_controller.press_button_confirm(center_x_abs, center_y_abs)
                 continue
+            result_check = None
 
-            result_check = all(desired_stats == arr_str for arr_str in recognized_lines)
+
+
+            if keep_all_useable:
+                check_pass = False
+                for useable_str in all_main_useable_stat:
+                    if check_pass:
+                        break
+                    check_pass = all(useable_str == arr_str for arr_str in recognized_lines[1:4])
+                result_check = check_pass
+            else:
+                result_check = all(check_desired_stats == arr_str for arr_str in recognized_lines[1:4])
 
 
             if result_check:
-                main.log(f"成功! 找到目标属性: {desired_stats}");
+                main.log(f"成功! 找到目标属性: {check_desired_stats}");
                 break
             # 未找到 使用魔方
             if not main.stop_event.is_set():
