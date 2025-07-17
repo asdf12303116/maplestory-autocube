@@ -1,153 +1,213 @@
+# .github/workflows/build-and-release.yml
 name: Build and Release
 
 on:
   push:
+    branches:
+      - master # main 分支的提交会触发开发构建
     tags:
-      - 'v*'  # 当推送标签时触发，例如 v0713-2
-  workflow_dispatch:  # 允许手动触发
+      - 'v*' # 只有 'v' 开头的标签才会触发发布构建
+    paths:
+      - '**/requirements.txt'
+      - '**/*.py'
+      - '**/*.spec'
+      - 'template/**'
+      - 'config.json'
+      - '.github/workflows/*.yml'
+  workflow_dispatch:
+    inputs:
+      force_rebuild:
+        description: 'Force rebuild without cache'
+        required: false
+        default: false
+        type: boolean
+
+# 防止同一个工作流对同一个提交或分支的重复运行
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: '3.11' # 建议使用主版本号，以便获取最新的补丁版本
+  VENV_PATH: .venv # 将虚拟环境目录定义为变量
 
 jobs:
-  build:
+  build-and-release:
     runs-on: windows-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11.9'
-        cache: 'pip'
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 获取所有历史记录，以便进行版本控制
 
-    - name: Get tag name
-      id: get_tag
-      run: |
-        if ("${{ github.ref }}" -match "refs/tags/(.+)") {
-          echo "TAG_NAME=$($matches[1])" >> $env:GITHUB_OUTPUT
-        } else {
-          echo "TAG_NAME=manual-build-$(Get-Date -Format 'MMdd-HHmm')" >> $env:GITHUB_OUTPUT
-        }    
-    
-    # 缓存虚拟环境
-    - name: Cache virtual environment
-      uses: actions/cache@v3
-      with:
-        path: venv
-        key: ${{ runner.os }}-venv-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-venv-
-    
-    - name: Create virtual environment
-      run: |
-        python -m venv venv
-        venv\Scripts\activate
-        python -m pip install --upgrade pip
-    
-    - name: Install dependencies
-      run: |
-        venv\Scripts\activate
-        pip install -r .\requirements.txt
-    
-    # 缓存 PyInstaller 构建文件
-    - name: Cache PyInstaller build
-      uses: actions/cache@v3
-      with:
-        path: |
-          build
-          *.spec
-        key: ${{ runner.os }}-pyinstaller-${{ hashFiles('**/*.py') }}
-    
-    # 新增:更新版本号步骤
-    - name: Update version number
-      run: |
-        $content = Get-Content -Path gui.py -Raw
-        $newContent = $content -replace 'package_version="{version}"', 'package_version="${{ steps.get_tag.outputs.TAG_NAME }}"'
-        Set-Content -Path gui.py -Value $newContent
-    
-    - name: Build with PyInstaller
-      run: |
-        venv\Scripts\activate
-        pyinstaller auto_cuber_main.spec
-    
-    - name: Copy additional files
-      run: |
-        # 复制template文件夹到dist目录
-        xcopy /E /I template dist\auto_cuber_main\template
-        
-        # 复制其他文件到dist目录
-        copy config.json dist\auto_cuber_main\
-        copy "使用说明.pdf" dist\auto_cuber_main\
-        copy "更新内容.txt" dist\auto_cuber_main\
+      - name: Set up Python and cache dependencies
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip' # setup-python 会自动处理缓存键和恢复
+          cache-dependency-path: 'requirements.txt'
 
-    - name: Extract current version changelog
-      id: changelog
-      run: |
-        if (Test-Path "更新内容.txt") {
-          $content = Get-Content "更新内容.txt" -Raw -Encoding UTF8
+      - name: Get current date
+        id: date
+        run: echo "date=$(Get-Date -Format 'yyyy-MM-dd-HHmmss')" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Determine build type and version
+        id: build_info
+        shell: pwsh
+        run: |
+          $isRelease = $false
+          $buildType = "development"
+          $tagName = "dev-build-${{ steps.date.outputs.date }}"
           
-          # 获取当前标签版本（去掉v前缀）
-          $currentTag = "${{ github.ref }}" -replace "refs/tags/v", ""
-          if (-not $currentTag) {
-            $currentTag = "manual-build"
+          if ("${{ github.event_name }}" -eq 'workflow_dispatch') {
+            $buildType = "manual"
+            $tagName = "manual-build-${{ steps.date.outputs.date }}"
+          } elseif ($env:GITHUB_REF -match "refs/tags/v(.+)") {
+            $isRelease = $true
+            $buildType = "release"
+            $tagName = "v" + $matches[1]
           }
           
-          # 查找当前版本的更新内容
-          $lines = $content -split "`r?`n"
-          $currentVersionContent = @()
-          $foundCurrentVersion = $false
-          $nextVersionFound = $false
+          echo "IS_RELEASE=$isRelease" >> $env:GITHUB_OUTPUT
+          echo "BUILD_TYPE=$buildType" >> $env:GITHUB_OUTPUT
+          echo "TAG_NAME=$tagName" >> $env:GITHUB_OUTPUT
           
-          foreach ($line in $lines) {
-            # 检查是否是版本行（格式：v0713-2:）
-            if ($line -match "^v?([^:]+):$") {
-              $version = $matches[1]
-              if ($version -eq $currentTag) {
-                $foundCurrentVersion = $true
-                $currentVersionContent += "## $line"
-                continue
-              } elseif ($foundCurrentVersion) {
-                # 找到下一个版本，停止提取
-                $nextVersionFound = $true
-                break
-              }
-            }
-            
-            # 如果找到了当前版本，添加内容行
-            if ($foundCurrentVersion -and -not $nextVersionFound) {
-              $currentVersionContent += $line
-            }
-          }
-          
-          # 如果没有找到当前版本，使用完整内容
-          if (-not $foundCurrentVersion) {
-            $changelogText = $content -replace "`r`n", "`n"
-            $changelogText = "## 完整更新日志`n`n" + $changelogText
+          # 输出构建信息以供调试
+          Write-Host "=== Build Information ==="
+          Write-Host "Tag Name: $tagName"
+          Write-Host "Build Type: $buildType"
+          Write-Host "Is Release: $isRelease"
+
+      - name: Install or update dependencies
+        run: |
+          python -m venv ${{ env.VENV_PATH }}
+          ${{ env.VENV_PATH }}\Scripts\python.exe -m pip install --upgrade pip
+          ${{ env.VENV_PATH }}\Scripts\python.exe -m pip install -r requirements.txt
+
+      - name: Update version number in code (for releases only)
+        if: steps.build_info.outputs.IS_RELEASE == 'true'
+        shell: pwsh
+        run: |
+          $versionFile = "gui.py"
+          $tag = "${{ steps.build_info.outputs.TAG_NAME }}"
+          if (Test-Path $versionFile) {
+            (Get-Content $versionFile -Raw) -replace 'package_version="{version}"', "package_version=`"$tag`"" | Set-Content $versionFile
+            Write-Host "✅ Version number in $versionFile updated to $tag"
           } else {
-            $changelogText = ($currentVersionContent -join "`n").Trim()
+            Write-Warning "⚠️ $versionFile not found, skipping version update."
+          }
+
+      - name: Clean and Build with PyInstaller
+        shell: pwsh
+        run: |
+          Write-Host "🧹 Cleaning previous build artifacts..."
+          Remove-Item -Path "dist", "build" -Recurse -Force -ErrorAction SilentlyContinue
+          
+          Write-Host "🏗️ Building executable with PyInstaller..."
+          ${{ env.VENV_PATH }}\Scripts\pyinstaller.exe auto_cuber_main.spec
+          
+          if (-not (Test-Path "dist\auto_cuber_main")) {
+            Write-Error "❌ PyInstaller build failed. The output directory was not found."
+            exit 1
+          }
+          Write-Host "✅ PyInstaller build completed successfully."
+
+      - name: Prepare package files
+        if: steps.build_info.outputs.IS_RELEASE == 'true'
+        shell: pwsh
+        run: |
+          Write-Host "📋 Copying additional files to package directory..."
+          $packageDir = "dist\auto_cuber_main"
+          
+          # 复制 template 文件夹
+          if (Test-Path "template") {
+            Copy-Item -Path "template" -Destination $packageDir -Recurse
+            Write-Host "✅ Copied 'template' folder."
+          } else {
+            Write-Warning "⚠️ 'template' folder not found."
           }
           
-          # 输出到 GitHub Output
-          echo "CHANGELOG<<EOF" >> $env:GITHUB_OUTPUT
+          # 复制其他文件
+          $filesToCopy = @("config.json", "使用说明.pdf", "更新内容.txt")
+          foreach ($file in $filesToCopy) {
+            if (Test-Path $file) {
+              Copy-Item -Path $file -Destination $packageDir
+              Write-Host "✅ Copied '$file'."
+            } else {
+              Write-Warning "⚠️ '$file' not found."
+            }
+          }
+
+      - name: Create ZIP archive
+        if: steps.build_info.outputs.IS_RELEASE == 'true'
+        id: package
+        shell: pwsh
+        run: |
+          $packageDir = "dist\auto_cuber_main"
+          $zipFileName = "auto_cuber_main_${{ steps.build_info.outputs.TAG_NAME }}.zip"
+          $zipFilePath = "dist\$zipFileName"
+          
+          Compress-Archive -Path $packageDir\* -DestinationPath $zipFilePath -Force
+          
+          if (-not (Test-Path $zipFilePath)) {
+              Write-Error "❌ Failed to create ZIP archive."
+              exit 1
+          }
+          
+          $zipInfo = Get-Item $zipFilePath
+          Write-Host "✅ ZIP package created: $zipFileName"
+          Write-Host "Size: $([math]::Round($zipInfo.Length / 1MB, 2)) MB"
+          
+          echo "zip_path=$zipFilePath" >> $env:GITHUB_OUTPUT
+          echo "zip_name=$zipFileName" >> $env:GITHUB_OUTPUT
+
+      - name: Extract Changelog for Release
+        id: changelog
+        if: steps.build_info.outputs.IS_RELEASE == 'true'
+        shell: pwsh
+        run: |
+          $changelogFile = "更新内容.txt"
+          $changelogText = "暂无更新内容。" # 默认值
+          if (Test-Path $changelogFile) {
+              $content = Get-Content $changelogFile -Raw -Encoding UTF8
+              $currentTag = "${{ steps.build_info.outputs.TAG_NAME }}" -replace "^v", ""
+          
+              # 使用更健壮的正则表达式来匹配版本块
+              $pattern = "(?msi)^v?$currentTag`s*:`r?`n(.+?)(?=`r?`n^v?\d|`$)"
+              if ($content -match $pattern) {
+                  $changelogText = $matches[1].Trim()
+              } else {
+                  $changelogText = "无法自动提取当前版本的更新日志，以下是完整内容：`n`n" + $content
+              }
+          }
+          
+          # 将多行字符串传递给 GITHUB_OUTPUT
+          $delimiter = "EOF"
+          echo "CHANGELOG<<$delimiter" >> $env:GITHUB_OUTPUT
           echo "$changelogText" >> $env:GITHUB_OUTPUT
-          echo "EOF" >> $env:GITHUB_OUTPUT
-        } else {
-          echo "CHANGELOG=暂无更新内容" >> $env:GITHUB_OUTPUT
-        }
+          echo "$delimiter" >> $env:GITHUB_OUTPUT
+          Write-Host "✅ Changelog extracted."
 
-    - name: Create ZIP package
-      run: |
-        cd dist
-        $zipFileName = "auto_cuber_main_${{ steps.get_tag.outputs.TAG_NAME }}.zip"
-        powershell Compress-Archive -Path auto_cuber_main -DestinationPath $zipFileName
 
-    - name: Create Release
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: ${{ steps.get_tag.outputs.TAG_NAME }}
-        name: Release ${{ steps.get_tag.outputs.TAG_NAME }}
-        body: ${{ steps.changelog.outputs.CHANGELOG }}
-        files: |
-          dist/auto_cuber_main_${{ steps.get_tag.outputs.TAG_NAME }}.zip
-        draft: false
-        prerelease: false
+
+      - name: Create GitHub Release
+        if: steps.build_info.outputs.IS_RELEASE == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.build_info.outputs.TAG_NAME }}
+          name: Release ${{ steps.build_info.outputs.TAG_NAME }}
+          body: |            
+            ${{ steps.changelog.outputs.CHANGELOG }}
+            
+            ---
+            
+            **构建信息:**
+            - **构建时间:** ${{ steps.date.outputs.date }}
+            - **提交 SHA:** `${{ github.sha }}`
+            - **Python 版本:** `${{ env.PYTHON_VERSION }}`
+
+          files: |
+            dist/${{ steps.package.outputs.zip_name }}
+          draft: false
+          prerelease: false
