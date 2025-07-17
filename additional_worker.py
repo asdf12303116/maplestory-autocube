@@ -45,6 +45,7 @@ def additional_worker(main, desired_stats,match_two_lines, show_image_var,keep_a
         mouse_move_arg = main.mouse_move_arg
 
         all_useable_stat = cfg.get("all_use")
+        keep_2_useable = main.keep_2_useable.get() == 1
         if keep_all_useable:
             main.log(f"目标属性: {all_useable_stat}")
         else:
@@ -155,7 +156,7 @@ def additional_worker(main, desired_stats,match_two_lines, show_image_var,keep_a
                 curr_stat = []
                 for stat in all_useable_stat:
                     curr_stat = stat
-                    result = main.validate_result(stat, recognized_lines[1:4], True)
+                    result = main.validate_result(stat, recognized_lines[1:4], True,keep_2_useable)
                     if result:
                         keep_result = True
                         break
@@ -163,7 +164,7 @@ def additional_worker(main, desired_stats,match_two_lines, show_image_var,keep_a
                     main.log(f"成功! 找到所有目标属性: {curr_stat[0:1]}")
                     break
             else:
-                result_check = main.validate_result(desired_stats, recognized_lines[1:4], match_two_lines)
+                result_check = main.validate_result(desired_stats, recognized_lines[1:4], match_two_lines,keep_2_useable)
                 if result_check:
                     main.log(f"成功! 找到所有目标属性: {desired_stats}");
                     break

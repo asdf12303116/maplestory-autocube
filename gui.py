@@ -158,6 +158,8 @@ class AutoCuberGUI(tk.Tk):
                 case '附加':
                     self.cube_type.set(0)
                     self.interval_var.set(value="200")
+                    self.keep_2_useable.set(0)
+                    self.chk_2_use.config(state=tk.NORMAL)
                     for chk in self.chk_var:
                         chk.config(state=tk.NORMAL)
                     for i in range(3):
@@ -167,6 +169,8 @@ class AutoCuberGUI(tk.Tk):
                 case '平等':
                     self.cube_type.set(1)
                     self.interval_var.set(value="1000")
+                    self.keep_2_useable.set(0)
+                    self.chk_2_use.config(state=tk.DISABLED)
                     for chk in self.chk_var:
                         chk.config(state=tk.DISABLED)
                         for i in range(3):
@@ -210,6 +214,14 @@ class AutoCuberGUI(tk.Tk):
                                command=self._toggle_all_line)
         chk1.pack(side=tk.LEFT)
         self.stats_combos.append(chk1)
+
+        row_frame.pack(fill=tk.X, pady=3)
+        self.keep_2_useable = tk.IntVar(value=0)
+        chk_2_use = ttk.Checkbutton(row_frame,
+                                    text="保留两条可用",
+                                    variable=self.keep_2_useable)
+        chk_2_use.pack(side=tk.LEFT)
+        self.chk_2_use = chk_2_use
 
         # 控制选项部分的修改
         control_options_frame = ttk.Frame(options_frame)
@@ -598,7 +610,7 @@ class AutoCuberGUI(tk.Tk):
     #         if 'capture' in locals() and capture: capture.release()
     #         self.after(0, self.on_worker_finished)
 
-    def validate_result(self, check_list, result_list, switch):
+    def validate_result(self, check_list, result_list, match_two_lines, use_2_use=False):
         """
         验证结果列表是否符合检测列表的要求
 
@@ -611,13 +623,17 @@ class AutoCuberGUI(tk.Tk):
         bool: 结果列表是否符合要求
         """
         print(f"原始校验结果: {check_list},原始结果列表{result_list}")
-        if switch:  # 开关开启时的逻辑
+        if match_two_lines:  # 开关开启时的逻辑
             # 检查第一个元素是否匹配检测列表的第一个元素
             if result_list[0] != check_list[0]:
                 return False
 
             # 检查第二和第三个元素是否在检测列表中
-            return all(elem in check_list for elem in result_list[1:3])
+            if use_2_use:
+                return any(elem in check_list for elem in result_list[1:3])
+            else:
+                return all(elem in check_list for elem in result_list[1:3])
+
 
         else:  # 开关关闭时的逻辑
             # 检查所有元素是否都在检测列表中
