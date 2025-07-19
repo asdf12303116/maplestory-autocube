@@ -25,7 +25,7 @@
     "between_attempts": 0.2
   },
   "ocr_settings": {
-    "score_cutoff": 65
+    "score_cutoff": 60
   },
   "all_use": [
     [

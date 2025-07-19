@@ -168,9 +168,9 @@ class AutoCuberGUI(tk.Tk):
                     self._toggle_third_line()
                 case '平等':
                     self.cube_type.set(1)
-                    self.interval_var.set(value="1000")
+                    self.interval_var.set(value="1300")
                     self.keep_2_useable.set(0)
-                    self.chk_2_use.config(state=tk.DISABLED)
+                    self.chk_2_use.config(state=tk.NORMAL)
                     for chk in self.chk_var:
                         chk.config(state=tk.DISABLED)
                         for i in range(3):
@@ -638,3 +638,11 @@ class AutoCuberGUI(tk.Tk):
         else:  # 开关关闭时的逻辑
             # 检查所有元素是否都在检测列表中
             return all(elem in check_list for elem in result_list)
+    def validate_main_result(self, check_str, result_list, use_2_use=False):
+        check_result = False
+        if use_2_use:
+            check_result = result_list.count(check_str) >= 2
+        else:
+            check_result =  all(check_str == arr_str for arr_str in result_list)
+        print(f"结果: {check_result} 目标属性: {check_str},结果列表{result_list}")
+        return check_result

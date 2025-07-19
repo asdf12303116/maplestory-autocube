@@ -46,6 +46,7 @@ def main_worker(main, desired_stats,show_image_var,keep_all_useable=False):
 
         all_main_useable_stat = cfg.get("all_main_use")
         check_desired_stats = None
+        keep_2_useable = main.keep_2_useable.get() == 1
         if keep_all_useable:
             main.log(f"目标属性: {all_main_useable_stat}")
         else:
@@ -161,10 +162,10 @@ def main_worker(main, desired_stats,show_image_var,keep_all_useable=False):
                 for useable_str in all_main_useable_stat:
                     if check_pass:
                         break
-                    check_pass = all(useable_str == arr_str for arr_str in recognized_lines[1:4])
+                    check_pass = main.validate_main_result(check_desired_stats, recognized_lines[1:4], keep_2_useable)
                 result_check = check_pass
             else:
-                result_check = all(check_desired_stats == arr_str for arr_str in recognized_lines[1:4])
+                result_check = main.validate_main_result(check_desired_stats, recognized_lines[1:4], keep_2_useable)
 
 
             if result_check:
@@ -172,7 +173,7 @@ def main_worker(main, desired_stats,show_image_var,keep_all_useable=False):
                 break
             # 未找到 使用魔方
             if not main.stop_event.is_set():
-                input_controller.press_button_confirm(center_x_abs, center_y_abs)
+                input_controller.press_button_confirm_main(center_x_abs, center_y_abs)
                 input_controller.click(client_origin[0] + mouse_move_arg[0], client_origin[1] + mouse_move_arg[1])
             continue
 

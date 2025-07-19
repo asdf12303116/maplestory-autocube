@@ -3,7 +3,7 @@ from typing import List
 import cv2
 import numpy as np
 from rapidocr import RapidOCR, OCRVersion ,ModelType
-from thefuzz import process
+from thefuzz import process, fuzz
 import re
 def preprocess_for_ocr(image: np.ndarray) -> np.ndarray:
     if image is None: return None
@@ -54,7 +54,7 @@ class OCREngine:
         if not self.valid_stats: return text
         # 去除所有非中文英文数字字符
         clean_text = ''.join(char for char in text if char.isalnum() or '\u4e00' <= char <= '\u9fff')
-        match = process.extractOne(clean_text, self.valid_stats)
+        match = process.extractOne(clean_text, self.valid_stats,scorer=fuzz.ratio)
         return match[0] if match and match[1] >= self.score_cutoff else text
 
     def _correct_value(self, text: str):
