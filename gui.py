@@ -9,6 +9,7 @@ import cv2
 from PIL import Image, ImageTk
 from pynput import keyboard
 
+from additional_choose_worker import additional_choose_worker
 from additional_worker import additional_worker
 from config_manager import ConfigManager
 from main_worker import main_worker
@@ -149,23 +150,16 @@ class AutoCuberGUI(tk.Tk):
         self.desired_stats_vars = []
 
         # 类型选择 '附加','平等','火花'
-        show_cube_type = ['附加', '平等']
+        show_cube_type = ['附加', '平等','选择附加']
         self.cube_type = tk.IntVar(value=0)
+
 
         def cube_type_change(args):
             sel_cube_type = cube_type.get()
             match sel_cube_type:
                 case '附加':
                     self.cube_type.set(0)
-                    self.interval_var.set(value="200")
-                    self.keep_2_useable.set(0)
-                    self.chk_2_use.config(state=tk.NORMAL)
-                    for chk in self.chk_var:
-                        chk.config(state=tk.NORMAL)
-                    for i in range(3):
-                        self.desired_stats_vars[i].set('')
-                        self.stats_combos[i].configure(state='readonly')
-                    self._toggle_third_line()
+                    set_add_type()
                 case '平等':
                     self.cube_type.set(1)
                     self.interval_var.set(value="1300")
@@ -179,9 +173,19 @@ class AutoCuberGUI(tk.Tk):
                             else:
                                 self.desired_stats_vars[i].set('')
                                 self.stats_combos[i].configure(state='disabled')
-                case '火花':
+                case '选择附加':
                     self.cube_type.set(2)
-
+                    set_add_type()
+        def set_add_type():
+            self.interval_var.set(value="200")
+            self.keep_2_useable.set(0)
+            self.chk_2_use.config(state=tk.NORMAL)
+            for chk in self.chk_var:
+                chk.config(state=tk.NORMAL)
+            for i in range(3):
+                self.desired_stats_vars[i].set('')
+                self.stats_combos[i].configure(state='readonly')
+            self._toggle_third_line()
         row_frame = ttk.Frame(options_frame)
         row_frame.pack(fill=tk.X, pady=3)
         ttk.Label(row_frame, text=f"类型:", width=8, anchor="e").pack(side=tk.LEFT, padx=(0, 5))
@@ -434,6 +438,8 @@ class AutoCuberGUI(tk.Tk):
                 additional_worker(self, desired_stats, match_two_lines, show_image_var, keep_all_useable)
             case 1:
                 main_worker(self, desired_stats, show_image_var, keep_all_useable)
+            case 2:
+                additional_choose_worker(self, desired_stats, match_two_lines, show_image_var, keep_all_useable)
 
     # def cubing_worker1(self, desired_stats, match_two_lines, show_image_var,keep_all_useable=False):
     #     """后台自动化工作线程。"""
@@ -445,7 +451,7 @@ class AutoCuberGUI(tk.Tk):
     #         threshold = cfg.get("template_match_threshold")
     #         resolution = self.resolution.get()
     #         file_end = cfg.get("file_end")
-    #         potential_matcher = TemplateMatcher(cfg.get("potential_area_template_path_prefix")+ resolution + file_end, threshold)
+    #         potential_matcher = TemplateMatcher(cfg.get("add_area_template_path_prefix")+ resolution + file_end, threshold)
     #         button_matcher = TemplateMatcher(cfg.get("cube_button_template_path_prefix")+ resolution + file_end, threshold)
     #         button_fail_matcher = TemplateMatcher(cfg.get("cube_button_fail_template_path_prefix")+ resolution + file_end, threshold)
     #         self.log("模板匹配器已加载。")
@@ -610,39 +616,3 @@ class AutoCuberGUI(tk.Tk):
     #         if 'capture' in locals() and capture: capture.release()
     #         self.after(0, self.on_worker_finished)
 
-    def validate_result(self, check_list, result_list, match_two_lines, use_2_use=False):
-        """
-        验证结果列表是否符合检测列表的要求
-
-        参数:
-        check_list (list): 包含2或3个元素的检测列表
-        result_list (list): 包含3个元素的结果列表
-        switch (bool): 控制验证逻辑的开关
-
-        返回:
-        bool: 结果列表是否符合要求
-        """
-        print(f"原始校验结果: {check_list},原始结果列表{result_list}")
-        if match_two_lines:  # 开关开启时的逻辑
-            # 检查第一个元素是否匹配检测列表的第一个元素
-            if result_list[0] != check_list[0]:
-                return False
-
-            # 检查第二和第三个元素是否在检测列表中
-            if use_2_use:
-                return any(elem in check_list for elem in result_list[1:3])
-            else:
-                return all(elem in check_list for elem in result_list[1:3])
-
-
-        else:  # 开关关闭时的逻辑
-            # 检查所有元素是否都在检测列表中
-            return all(elem in check_list for elem in result_list)
-    def validate_main_result(self, check_str, result_list, use_2_use=False):
-        check_result = False
-        if use_2_use:
-            check_result = result_list.count(check_str) >= 2
-        else:
-            check_result =  all(check_str == arr_str for arr_str in result_list)
-        print(f"结果: {check_result} 目标属性: {check_str},结果列表{result_list}")
-        return check_result

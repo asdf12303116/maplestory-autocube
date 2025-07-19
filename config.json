@@ -1,6 +1,7 @@
 {
   "window_class": "MapleStoryClassSG",
-  "potential_area_template_path_prefix": "template/additional_",
+  "add_area_template_path_prefix": "template/additional_",
+  "add_choose_area_template_path_prefix": "template/add_choose_",
   "cube_button_template_path_prefix": "template/additional_use_",
   "cube_button_fail_template_path_prefix": "template/additional_use_fail_",
   "main_area_template_path_prefix": "template/main_",

@@ -4,6 +4,7 @@ import time
 from input_automation_controller import InputController
 from ocr_text_correction_engine import OCREngine
 from template_matcher import TemplateMatcher
+from validater import validate_result
 from window_client_area_capture import Capture
 from window_manager import WindowManager
 
@@ -18,7 +19,7 @@ def additional_worker(main, desired_stats,match_two_lines, show_image_var,keep_a
         threshold = cfg.get("template_match_threshold")
         resolution = main.resolution.get()
         file_end = cfg.get("file_end")
-        potential_matcher = TemplateMatcher(cfg.get("potential_area_template_path_prefix") + resolution + file_end,
+        potential_matcher = TemplateMatcher(cfg.get("add_area_template_path_prefix") + resolution + file_end,
                                             threshold)
         button_matcher = TemplateMatcher(cfg.get("cube_button_template_path_prefix") + resolution + file_end, threshold)
         button_fail_matcher = TemplateMatcher(cfg.get("cube_button_fail_template_path_prefix") + resolution + file_end,
@@ -156,7 +157,7 @@ def additional_worker(main, desired_stats,match_two_lines, show_image_var,keep_a
                 curr_stat = []
                 for stat in all_useable_stat:
                     curr_stat = stat
-                    result = main.validate_result(stat, recognized_lines[1:4], True,keep_2_useable)
+                    result = validate_result(stat, recognized_lines[1:4], True,keep_2_useable)
                     if result:
                         keep_result = True
                         break
@@ -164,7 +165,7 @@ def additional_worker(main, desired_stats,match_two_lines, show_image_var,keep_a
                     main.log(f"成功! 找到所有目标属性: {curr_stat[0:1]}")
                     break
             else:
-                result_check = main.validate_result(desired_stats, recognized_lines[1:4], match_two_lines,keep_2_useable)
+                result_check = validate_result(desired_stats, recognized_lines[1:4], match_two_lines,keep_2_useable)
                 if result_check:
                     main.log(f"成功! 找到所有目标属性: {desired_stats}");
                     break

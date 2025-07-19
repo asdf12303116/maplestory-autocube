@@ -1,15 +1,15 @@
 import time
-from doctest import debug
+
 
 from input_automation_controller import InputController
 from ocr_text_correction_engine import OCREngine
 from template_matcher import TemplateMatcher
-from validater import validate_main_result
+from validater import validate_result
 from window_client_area_capture import Capture
 from window_manager import WindowManager
 
 
-def main_worker(main, desired_stats,show_image_var,keep_all_useable=False):
+def additional_choose_worker(main, desired_stats,match_two_lines, show_image_var,keep_all_useable=False):
     """后台自动化工作线程。"""
     try:
         # --- 初始化 ---
@@ -19,10 +19,10 @@ def main_worker(main, desired_stats,show_image_var,keep_all_useable=False):
         threshold = cfg.get("template_match_threshold")
         resolution = main.resolution.get()
         file_end = cfg.get("file_end")
-        potential_matcher = TemplateMatcher(cfg.get("main_area_template_path_prefix") + resolution + file_end,
+        potential_matcher = TemplateMatcher(cfg.get("add_choose_area_template_path_prefix") + resolution + file_end,
                                             threshold)
-        button_matcher = TemplateMatcher(cfg.get("main_button_template_path_prefix") + resolution + file_end, threshold)
-        button_fail_matcher = TemplateMatcher(cfg.get("main_button_fail_template_path_prefix") + resolution + file_end,
+        button_matcher = TemplateMatcher(cfg.get("cube_button_template_path_prefix") + resolution + file_end, threshold)
+        button_fail_matcher = TemplateMatcher(cfg.get("cube_button_fail_template_path_prefix") + resolution + file_end,
                                               threshold)
         main.log("模板匹配器已加载。")
         use_high_level = main.use_high_level.get() == 1
@@ -45,14 +45,12 @@ def main_worker(main, desired_stats,show_image_var,keep_all_useable=False):
         input_controller = InputController(delay_after_click, delay_after_enter)
         mouse_move_arg = main.mouse_move_arg
 
-        all_main_useable_stat = cfg.get("all_main_use")
-        check_desired_stats = None
+        all_useable_stat = cfg.get("all_use")
         keep_2_useable = main.keep_2_useable.get() == 1
         if keep_all_useable:
-            main.log(f"目标属性: {all_main_useable_stat}")
+            main.log(f"目标属性: {all_useable_stat}")
         else:
-            check_desired_stats = desired_stats[0]
-            main.log(f"目标属性: {check_desired_stats}")
+            main.log(f"目标属性: {desired_stats}")
         main.log("--- 初始化完成, 3秒后开始 ---")
         time.sleep(3)
 
@@ -85,7 +83,7 @@ def main_worker(main, desired_stats,show_image_var,keep_all_useable=False):
                     main.log("警告: 无法捕捉窗口画面。")
                     time.sleep(1)
                     continue
-            # main.log(f"当前获取图像分辨率{client_origin[2] - client_origin[0]}x{client_origin[3] - client_origin[1]}")
+            # main.log(f"当前获取图像分辨率{client_origin[2]-client_origin[0]}x{client_origin[3]-client_origin[1]}")
             potential_loc, potential_size, potential_threshold = potential_matcher.find_match(client_area_capture)
             button_loc, button_size, button_threshold = button_matcher.find_match(client_area_capture)
             button_fail_loc, button_fail_size, button_fail_threshold = button_fail_matcher.find_match(
@@ -133,7 +131,9 @@ def main_worker(main, desired_stats,show_image_var,keep_all_useable=False):
             if potential_frame.size == 0: main.log("警告: 裁剪后的潜能区域为空。"); continue
             if show_image_var.get(): main.image_queue.put(potential_frame.copy())
 
-            recognized_lines = ocr_engine.get_text_from_image(potential_frame,'main')
+
+
+            recognized_lines = ocr_engine.get_text_from_image(potential_frame,"additional_choose")
             main.log(f"识别结果: {recognized_lines}")
 
             # main.log(f"测试再次使用");
@@ -154,28 +154,27 @@ def main_worker(main, desired_stats,show_image_var,keep_all_useable=False):
                 time.sleep(0.1)
                 input_controller.press_button_confirm(center_x_abs, center_y_abs)
                 continue
-            result_check = None
-
-
-
             if keep_all_useable:
-                check_pass = False
-                for useable_str in all_main_useable_stat:
-                    if check_pass:
+                keep_result = False
+                curr_stat = []
+                for stat in all_useable_stat:
+                    curr_stat = stat
+                    result = validate_result(stat, recognized_lines[1:4], True,keep_2_useable)
+                    if result:
+                        keep_result = True
                         break
-                    check_pass = validate_main_result(check_desired_stats, recognized_lines[1:4], keep_2_useable)
-                result_check = check_pass
+                if keep_result:
+                    main.log(f"成功! 找到所有目标属性: {curr_stat[0:1]}")
+                    break
             else:
-                result_check = validate_main_result(check_desired_stats, recognized_lines[1:4], keep_2_useable)
-
-
-            if result_check:
-                main.log(f"成功! 找到目标属性: {check_desired_stats}");
-                break
+                result_check = validate_result(desired_stats, recognized_lines[1:4], match_two_lines,keep_2_useable)
+                if result_check:
+                    main.log(f"成功! 找到所有目标属性: {desired_stats}");
+                    break
             # 未找到 使用魔方
             if not main.stop_event.is_set():
-                input_controller.press_button_confirm_main(center_x_abs, center_y_abs)
-                input_controller.click(client_origin[0] + mouse_move_arg[0], client_origin[1] + mouse_move_arg[1])
+                input_controller.press_button_confirm(center_x_abs, center_y_abs)
+                input_controller.click(client_origin[0] + + mouse_move_arg[0], client_origin[1] + mouse_move_arg[1])
             continue
 
 

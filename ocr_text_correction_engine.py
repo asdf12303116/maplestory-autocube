@@ -60,31 +60,33 @@ class OCREngine:
     def _correct_value(self, text: str):
         match = re.search(r'(\d{1,3}%)', text)
         return match.group(1) if match else text
+
+    def get_cut_param(self,height,width,cube_type):
+        bbox = None
+        match cube_type:
+            case 'additional':
+                bbox = (0.61,0.81,0.1,0.9)
+            case 'additional_choose':
+                bbox = (0.71, 0.87, 0.08, 0.9)
+            case 'main':
+                bbox = (0.63,0.88,0.1,0.9)
+            case _:
+                bbox = ( 0.63,0.88,0.1,0.9)
+
+        return int(height * bbox[0]),int(height * bbox[1]),int(width * bbox[2]),int(width * bbox[3])
+
     def get_text_from_image(self, image: np.ndarray, cube_type='additional'):
         if self.engine is None or image is None: return []
         try:
             # 获取匹配区域的高度
             height = image.shape[0]
             width = image.shape[1]
-            is_additional = cube_type == 'additional'
-            start_height = None
-            end_height = None
-            start_width = None
-            end_width = None
-            if not is_additional:
-                start_height = int(height * 0.63)
-                end_height = int(height * 0.88)
-                start_width = int(width * 0.1)
-                end_width = int(width * 0.9)
-            else:
-                start_height = int(height * 0.61)
-                end_height = int(height * 0.81)
-                start_width = int(width * 0.1)
-                end_width = int(width * 0.9)
-
+            start_height, end_height, start_width, end_width = self.get_cut_param(height,width,cube_type)
 
             cropped_area = image[start_height:end_height, start_width:end_width]
             per_height = int(cropped_area.shape[0] / 4)
+
+
 
 
             # 词条
