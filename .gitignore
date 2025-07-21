@@ -7,6 +7,7 @@ ENV/
 env.bak/
 venv.bak/
 .idea/
+test/
 
 
 __pycache__
