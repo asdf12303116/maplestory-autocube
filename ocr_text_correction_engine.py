@@ -149,8 +149,25 @@ class OCREngine:
 
         # 处理第一个元素（标题）
         if text_arr:
-            result.append(text_arr[0])
-            raw_format_data.append(text_arr[0])
+            raw_text = text_arr[0]
+            #去除空白字符，全角字符转为半角字符
+            format_text = ''
+
+            # 去除空白字符
+            raw_text = ''.join(raw_text.split())
+
+            # 全角字符转半角字符
+            for char in raw_text:
+                code_point = ord(char)
+                # 全角字符范围通常在FF00-FFEF
+                if 0xFF01 <= code_point <= 0xFF5E:
+                    # 转换为对应的半角字符
+                    format_text += chr(code_point - 0xFEE0)
+                else:
+                    format_text += char
+            format_text = format_text.upper()
+            result.append(format_text)
+            raw_format_data.append(format_text)
 
         # 处理剩余元素
         for text in text_arr[1:]:
