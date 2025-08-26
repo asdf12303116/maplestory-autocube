@@ -28,7 +28,7 @@ def additional_worker(main, desired_stats,match_two_lines, show_image_var,keep_a
         use_high_level = main.use_high_level.get() == 1
         print(f"use_high_level: {use_high_level}")
         ocr_engine = OCREngine(cfg.get("valid_potentials"), cfg.get("ocr_settings", {}).get("score_cutoff"),
-                               bool(main.use_plus_two_var), use_high_level)
+                               bool(main.use_plus_two_var.get()), use_high_level)
         if not ocr_engine.engine: main.log("错误: OCR 引擎初始化失败。"); return
 
         win_manager = WindowManager(cfg.get("window_class", "MapleStoryClassSG"))
@@ -144,7 +144,7 @@ def additional_worker(main, desired_stats,match_two_lines, show_image_var,keep_a
             if len(recognized_lines) < 2: main.log("警告: 未能识别到足够的潜能行。"); time.sleep(
                 cfg.get("delays").get("after_click")); continue
 
-            level_ok = recognized_lines[0].startswith("L")
+            level_ok = recognized_lines[0].startswith("L") or recognized_lines[0].startswith("SS") or recognized_lines[0].startswith("ss")
 
             if not level_ok:
                 last_level_not_top = True

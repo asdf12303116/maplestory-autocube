@@ -68,7 +68,15 @@ class AutoCuberGUI(tk.Tk):
             target_key = f'{key}'
         if target_key == 'q':
             self.after(0, self.key_exit)
+        if target_key == 's':
+            self.key_start()
 
+    def key_start(self):
+        start_button_state = self.start_button.cget('state')
+        is_normal = start_button_state == tk.NORMAL
+        if is_normal:
+            print("key start")
+            self.start_cubing()
     def key_exit(self):
         if not self.stop_event.is_set():
             print("key exit")

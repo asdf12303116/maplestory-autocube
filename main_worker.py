@@ -146,7 +146,7 @@ def main_worker(main, desired_stats,show_image_var,keep_all_useable=False):
             if len(recognized_lines) < 2: main.log("警告: 未能识别到足够的潜能行。"); time.sleep(
                 cfg.get("delays").get("after_click")); continue
 
-            level_ok = recognized_lines[0].startswith("L")
+            level_ok = recognized_lines[0].startswith("L") or recognized_lines[0].startswith("SS") or recognized_lines[0].startswith("ss")
 
             if not level_ok:
                 last_level_not_top = True
