@@ -50,6 +50,13 @@ class OCREngine:
         self.score_cutoff = score_cutoff
         self.use_plus_two = use_plus_two
 
+    def _debug(self,image: np.ndarray,file_name):
+        result = self.engine(image, use_det=True, use_cls=False, use_rec=True)
+        if  file_name:
+            result.vis(file_name)
+        else:
+            result.vis("ocr_debug_result.jpg")
+
     def _correct_text(self, text: str):
         if not self.valid_stats: return text
         # 去除所有非中文英文数字字符
@@ -61,32 +68,61 @@ class OCREngine:
         match = re.search(r'(\d{1,3}%)', text)
         return match.group(1) if match else text
 
-    def get_cut_param(self,height,width,cube_type):
-        bbox = None
+    def get_res_cut_param(self,height,width,cube_type,main):
+        res_2560_bbox = {
+            'additional':(0.61,0.81,0.1,0.9),
+            'additional_choose':(0.71, 0.87, 0.08, 0.9),
+            'main':(0.63,0.88,0.1,0.9)
+        }
+        res_1920_bbox = {
+            'additional': (0.61, 0.817, 0.1, 0.9),
+            'additional_choose': (0.71, 0.87, 0.08, 0.9),
+            'main': (0.63, 0.88, 0.1, 0.9)
+        }
+        res_1366_bbox = {
+            'additional': (0.62, 0.82, 0.1, 0.9),
+            'additional_choose': (0.71, 0.87, 0.08, 0.9),
+            'main': (0.63, 0.88, 0.1, 0.9)
+        }
+        res = main.resolution.get()
+        res_bbox = None
+        param = None
+        match res:
+            case '2560':
+                res_bbox = res_2560_bbox
+            case '1920':
+                res_bbox = res_1920_bbox
+            case '1366':
+                res_bbox = res_1366_bbox
+            case _:
+                res_bbox = res_2560_bbox
         match cube_type:
             case 'additional':
-                bbox = (0.61,0.81,0.1,0.9)
+                param = res_bbox['additional']
             case 'additional_choose':
-                bbox = (0.71, 0.87, 0.08, 0.9)
+                param = res_bbox['additional_choose']
             case 'main':
-                bbox = (0.63,0.88,0.1,0.9)
+                param = res_bbox['main']
             case _:
-                bbox = ( 0.63,0.88,0.1,0.9)
+                param = res_bbox['additional']
+        print(f"curr res: {res}  cur bbox: {param}")
+        return int(height * param[0]),int(height * param[1]),int(width * param[2]),int(width * param[3])
 
-        return int(height * bbox[0]),int(height * bbox[1]),int(width * bbox[2]),int(width * bbox[3])
 
-    def get_text_from_image(self, image: np.ndarray, cube_type='additional'):
+    def get_text_from_image(self, image: np.ndarray, cube_type='additional',main=None):
         if self.engine is None or image is None: return []
         try:
             # 获取匹配区域的高度
             height = image.shape[0]
             width = image.shape[1]
-            start_height, end_height, start_width, end_width = self.get_cut_param(height,width,cube_type)
+            start_height, end_height, start_width, end_width = self.get_res_cut_param(height,width,cube_type,main)
 
             cropped_area = image[start_height:end_height, start_width:end_width]
             per_height = int(cropped_area.shape[0] / 4)
 
-
+            #debug 位置
+            self._debug(image,"./debug/ocr_debug_raw.jpg")
+            self._debug(cropped_area,"./debug/ocr_debug_cut.jpg")
 
 
             # 词条
@@ -100,6 +136,11 @@ class OCREngine:
             str1_txt = self.engine(str1, use_det=False, use_cls=False, use_rec=True)
             str2_txt = self.engine(str2, use_det=False, use_cls=False, use_rec=True)
             str3_txt = self.engine(str3, use_det=False, use_cls=False, use_rec=True)
+
+            level_txt.vis("./debug/ocr_debug_level.jpg")
+            str1_txt.vis("./debug/ocr_debug_str1.jpg")
+            str2_txt.vis("./debug/ocr_debug_str2.jpg")
+            str3_txt.vis("./debug/ocr_debug_str3.jpg")
 
             level_str = ''
             str1_str = ''
@@ -121,7 +162,7 @@ class OCREngine:
             result.append(str1_str)
             result.append(str2_str)
             result.append(str3_str)
-            # print(f"原始数据: {result}")
+            print(f"原始数据: {result}")
             return self.format_text(result)
         except Exception as e:
             print(f"OCR发生未知错误: {e}")

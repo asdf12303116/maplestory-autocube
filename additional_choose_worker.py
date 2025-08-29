@@ -133,7 +133,7 @@ def additional_choose_worker(main, desired_stats,match_two_lines, show_image_var
 
 
 
-            recognized_lines = ocr_engine.get_text_from_image(potential_frame,"additional_choose")
+            recognized_lines = ocr_engine.get_text_from_image(potential_frame,"additional_choose",main)
             main.log(f"识别结果: {recognized_lines}")
 
             # main.log(f"测试再次使用");

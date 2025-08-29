@@ -131,7 +131,7 @@ def additional_worker(main, desired_stats,match_two_lines, show_image_var,keep_a
             if potential_frame.size == 0: main.log("警告: 裁剪后的潜能区域为空。"); continue
             if show_image_var.get(): main.image_queue.put(potential_frame.copy())
 
-            recognized_lines = ocr_engine.get_text_from_image(potential_frame)
+            recognized_lines = ocr_engine.get_text_from_image(potential_frame,main=main)
             main.log(f"识别结果: {recognized_lines}")
 
             # main.log(f"测试再次使用");
